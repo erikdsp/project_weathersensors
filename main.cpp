@@ -4,12 +4,27 @@
 #include <mutex>
 #include <random>
 #include <chrono>
+#include <vector>
+#include <map>
 using namespace std::literals::chrono_literals;
 
+// how to get a time stamp
+// std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+// auto t1 = std::chrono::steady_clock::now();
+
 std::mutex sensor_mutex;
+std::atomic_bool system_running { true };  
 
+struct SensorReadings {
+    using time_point = std::chrono::steady_clock::time_point;
+    std::map<time_point, double> temperature;
+    std::map<time_point, double> humidity;
+    std::map<time_point, double> windspeed;
+};
+
+// global object to store data
 namespace sensor_data {
-
+    SensorReadings readings;
 }
 
 // temperatur, luftfuktighet och vindhastighet
@@ -57,7 +72,7 @@ void sensor_humidity()
         // generate sensor data
         double fluct { humfluct_distrib(random) };
         double new_hum = relative_humidity += fluct;
-        // check that temp does not exceed bounds
+        // check that humidity does not exceed bounds
         if ( new_hum < min_humidity || new_hum > max_humidity ) {
             new_hum = relative_humidity -= fluct;
         }
@@ -97,8 +112,18 @@ void sensor_windspeed()
         }
         std::this_thread::sleep_for(500ms);
     }
+}
 
-
+void quit_prompt(){
+    std::string input;
+    while (std::cin >> input){        
+        if (input.at(0) == 'q') break;
+    }    
+    system_running = false;
+    {
+        std::lock_guard<std::mutex> guard(sensor_mutex);
+        std::cout << "Quit program\n";
+    }
 }
 
 int main() 
@@ -107,6 +132,9 @@ int main()
     std::thread temperature(sensor_temperature);
     std::thread relative_humidity(sensor_humidity);
     std::thread windspeed(sensor_windspeed);
+
+    // std::thread user_prompt(quit_prompt);
+    // user_prompt.join();
 
     temperature.join();
     relative_humidity.join();
