@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <thread>
 #include <atomic>
 #include <mutex>
@@ -119,7 +120,7 @@ void sensor_windspeed()
 
 void quit_prompt(){
     std::string input;
-    while (std::cin >> input){        
+    while (std::cin >> input){                
         if (input.at(0) == 'q') break;
     }    
     system_running = false;
@@ -143,25 +144,24 @@ int main()
     relative_humidity.join();
     windspeed.join();
 
+
+
     // test printing that data is saved
+    std::cout << "\nTemperature:\t";
     for (auto& temp : sensor_data::readings.temperature) {
-        std::cout << temp.second << " ";
+        std::cout << std::setprecision(4) << temp.second << "\t";
     }
-    std::cout << "\n";
 
+    std::cout << "\nHumidity:\t";
     for (auto& hum : sensor_data::readings.humidity) {
-        std::cout << hum.second << " ";
+        std::cout << hum.second << "\t";
     }
-    std::cout << "\n";
 
+    std::cout << "\nWind Speed:\t";
     for (auto& ws : sensor_data::readings.windspeed) {
-        std::cout << ws.second << " ";
+        std::cout << ws.second << "\t";
     }
     std::cout << "\n";
-
-
-    std::cout << sensor_data::readings.temperature.size() << "\n";
-    std::cout << "\t" << sensor_data::readings.humidity.size() << "\n";
 
 
     return 0;
