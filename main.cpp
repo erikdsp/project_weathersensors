@@ -17,7 +17,7 @@ std::mutex sensor_mutex;
 std::atomic_bool system_running { true };  
 
 struct SensorReadings {
-    using time_point = std::chrono::steady_clock::time_point;
+    using time_point = std::chrono::system_clock::time_point;
     std::map<time_point, double> temperature;
     std::map<time_point, double> humidity;
     std::map<time_point, double> windspeed;
@@ -52,7 +52,7 @@ void sensor_temperature()
         temperature = new_temp;
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
-            sensor_data::readings.temperature.insert({std::chrono::steady_clock::now(), temperature});
+            sensor_data::readings.temperature.insert({std::chrono::system_clock::now(), temperature});
             std::cout << temperature << "\n";
         }
         std::this_thread::sleep_for(500ms);
@@ -81,7 +81,7 @@ void sensor_humidity()
         relative_humidity = new_hum;
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
-            sensor_data::readings.humidity.insert({std::chrono::steady_clock::now(), relative_humidity});
+            sensor_data::readings.humidity.insert({std::chrono::system_clock::now(), relative_humidity});
             std::cout << "\t" << relative_humidity << "\n";
         }
         std::this_thread::sleep_for(500ms);
@@ -111,11 +111,16 @@ void sensor_windspeed()
         windspeed = new_windspeed;
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
-            sensor_data::readings.windspeed.insert({std::chrono::steady_clock::now(), windspeed});
+            sensor_data::readings.windspeed.insert({std::chrono::system_clock::now(), windspeed});
             std::cout << "\t\t" << windspeed << "\n";
         }
         std::this_thread::sleep_for(500ms);
     }
+}
+
+void sensor_statistics() {
+    using time_point = std::chrono::system_clock::time_point;
+    static time_point last_temperature {};
 }
 
 void quit_prompt(){
@@ -147,9 +152,10 @@ int main()
 
 
     // test printing that data is saved
-    std::cout << "\nTemperature:\t";
+    std::cout << "\nTemperature:\n";
     for (auto& temp : sensor_data::readings.temperature) {
-        std::cout << std::setprecision(4) << temp.second << "\t";
+        std::cout << std::chrono::system_clock::to_time_t(temp.first) << "\t";
+        std::cout << temp.second << "\n";
     }
 
     std::cout << "\nHumidity:\t";
