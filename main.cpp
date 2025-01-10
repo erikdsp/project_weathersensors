@@ -79,7 +79,7 @@ void sensor_temperature()
         temperature = new_temp;
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
-            sensor_data::new_readings.temperature.push_back({std::chrono::system_clock::now(), temperature});
+            sensor_data::new_readings.temperature.emplace_back(std::chrono::system_clock::now(), temperature);
             std::cout << temperature << "\n";
         }
         std::this_thread::sleep_for(500ms);
@@ -108,7 +108,7 @@ void sensor_humidity()
         relative_humidity = new_hum;
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
-            sensor_data::new_readings.humidity.push_back({std::chrono::system_clock::now(), relative_humidity});
+            sensor_data::new_readings.humidity.emplace_back(std::chrono::system_clock::now(), relative_humidity);
             std::cout << "\t" << relative_humidity << "\n";
         }
         std::this_thread::sleep_for(500ms);
@@ -138,7 +138,7 @@ void sensor_windspeed()
         windspeed = new_windspeed;
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
-            sensor_data::new_readings.windspeed.push_back({std::chrono::system_clock::now(), windspeed});
+            sensor_data::new_readings.windspeed.emplace_back(std::chrono::system_clock::now(), windspeed);
             std::cout << "\t\t" << windspeed << "\n";
         }
         std::this_thread::sleep_for(500ms);
@@ -175,8 +175,16 @@ void calculate_statistics(Stats& stat, bool& first_reading,
     }
     int num_of_entries { static_cast<int>(readings.size() + new_readings.size()) };
     stat.average = sum / num_of_entries;
+}
 
-    }
+void move_sensor_data( std::vector<TimeDouble>& readings, std::vector<TimeDouble>& new_readings ) {
+    // move data into readings
+    readings.insert(readings.end(), 
+                    std::make_move_iterator(new_readings.begin()), 
+                    std::make_move_iterator(new_readings.end()) );
+    // clear new_readings
+    new_readings.clear();
+}
 
 
 void sensor_statistics() {
@@ -198,17 +206,15 @@ void sensor_statistics() {
             calculate_statistics(sensor_data::statistics.windspeed, first_windspeed, 
                 sensor_data::readings.windspeed, sensor_data::new_readings.windspeed);
 
-            // move data into readings  - See below
-            // v1.insert(v1.end(), make_move_iterator(v2.begin()), make_move_iterator(v2.end()));
-/* 
-            sensor_data::readings.temperature.insert_range(std::move(sensor_data::new_readings.temperature));
-            sensor_data::readings.humidity.insert_range(std::move(sensor_data::new_readings.temperature));
-            sensor_data::readings.windspeed.insert_range(std::move(sensor_data::new_readings.temperature));
+            move_sensor_data(sensor_data::readings.temperature, sensor_data::new_readings.temperature);
+            move_sensor_data(sensor_data::readings.humidity, sensor_data::new_readings.humidity);
+            move_sensor_data(sensor_data::readings.windspeed, sensor_data::new_readings.windspeed);
+
+            // sensor_data::readings.humidity.insert_range(std::move(sensor_data::new_readings.temperature));
+            // sensor_data::readings.windspeed.insert_range(std::move(sensor_data::new_readings.temperature));
             // clear new_readings
-            sensor_data::new_readings.temperature.clear();
-            sensor_data::new_readings.humidity.clear();
-            sensor_data::new_readings.windspeed.clear();
- */        
+            // sensor_data::new_readings.humidity.clear();
+            // sensor_data::new_readings.windspeed.clear();
         }
     }
 
