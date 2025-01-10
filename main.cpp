@@ -240,6 +240,8 @@ int main()
     std::thread temperature(sensor_temperature);
     std::thread relative_humidity(sensor_humidity);
     std::thread windspeed(sensor_windspeed);
+    std::thread statistics(sensor_statistics);
+
 
     // std::thread user_prompt(quit_prompt);
     // user_prompt.join();
@@ -247,7 +249,8 @@ int main()
     temperature.join();
     relative_humidity.join();
     windspeed.join();
-
+    system_running = false;
+    statistics.join();
 
 
     // test printing that data is saved
@@ -256,6 +259,10 @@ int main()
         std::cout << std::chrono::system_clock::to_time_t(temp.time_point) << "\t";
         std::cout << temp.value << "\n";
     }
+    std::cout << "Max temp: " << sensor_data::statistics.temperature.max.value << "\n";
+    std::cout << "Min temp: " << sensor_data::statistics.temperature.min.value << "\n";
+    std::cout << "Average temp: " << sensor_data::statistics.temperature.average << "\n";
+
 
     std::cout << "\nHumidity:\t";
     for (auto& hum : sensor_data::new_readings.humidity) {
