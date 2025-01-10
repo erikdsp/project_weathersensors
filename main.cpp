@@ -17,17 +17,21 @@ using namespace std::literals::chrono_literals;
 std::mutex sensor_mutex;
 std::atomic_bool system_running { true };  
 
-struct SensorReadings {
-    using time_point = std::chrono::system_clock::time_point;
-    std::map<time_point, double> temperature;
-    std::map<time_point, double> humidity;
-    std::map<time_point, double> windspeed;
-};
 
 // storing time_point and double pairs
 struct TimeDouble {
     std::chrono::system_clock::time_point time_point;
     double value;
+};
+
+struct SensorReadings {
+    using time_point = std::chrono::system_clock::time_point;
+    std::vector<TimeDouble> temperature;
+    std::vector<TimeDouble> humidity;
+    std::vector<TimeDouble> windspeed;
+    // std::map<time_point, double> temperature;
+    // std::map<time_point, double> humidity;
+    // std::map<time_point, double> windspeed;
 };
 
 // storing each sensors statistics
@@ -75,7 +79,7 @@ void sensor_temperature()
         temperature = new_temp;
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
-            sensor_data::new_readings.temperature.insert({std::chrono::system_clock::now(), temperature});
+            sensor_data::new_readings.temperature.push_back({std::chrono::system_clock::now(), temperature});
             std::cout << temperature << "\n";
         }
         std::this_thread::sleep_for(500ms);
@@ -104,7 +108,7 @@ void sensor_humidity()
         relative_humidity = new_hum;
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
-            sensor_data::new_readings.humidity.insert({std::chrono::system_clock::now(), relative_humidity});
+            sensor_data::new_readings.humidity.push_back({std::chrono::system_clock::now(), relative_humidity});
             std::cout << "\t" << relative_humidity << "\n";
         }
         std::this_thread::sleep_for(500ms);
@@ -134,7 +138,7 @@ void sensor_windspeed()
         windspeed = new_windspeed;
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
-            sensor_data::new_readings.windspeed.insert({std::chrono::system_clock::now(), windspeed});
+            sensor_data::new_readings.windspeed.push_back({std::chrono::system_clock::now(), windspeed});
             std::cout << "\t\t" << windspeed << "\n";
         }
         std::this_thread::sleep_for(500ms);
@@ -142,32 +146,32 @@ void sensor_windspeed()
 }
 
 void calculate_statistics(Stats& stat, bool& first_reading,
-    std::map<std::chrono::system_clock::time_point, double> readings,
-    std::map<std::chrono::system_clock::time_point, double> new_readings) {
+    std::vector<TimeDouble> readings,
+    std::vector<TimeDouble> new_readings) {
 
     double sum{ stat.average * readings.size() };
     for (auto& reading : new_readings) {
         if (first_reading) {
             // set max
-            stat.max.value = reading.second;     
-            stat.max.time_point = reading.first; 
+            stat.max.value = reading.value;     
+            stat.max.time_point = reading.time_point; 
             // set min
-            stat.min.value = reading.second;
-            stat.min.time_point = reading.first;
+            stat.min.value = reading.value;
+            stat.min.time_point = reading.time_point;
             first_reading = false;
         }
         // find and update max
-        if (reading.second > stat.max.value) {
-            stat.max.value = reading.second;     
-            stat.max.time_point = reading.first; 
+        if (reading.value > stat.max.value) {
+            stat.max.value = reading.value;     
+            stat.max.time_point = reading.time_point; 
         }
         // find and update min
-        if (reading.second < stat.min.value) {
-            stat.min.value = reading.second;
-            stat.min.time_point = reading.first;
+        if (reading.value < stat.min.value) {
+            stat.min.value = reading.value;
+            stat.min.time_point = reading.time_point;
         }
         // add value to sum
-        sum += reading.second;
+        sum += reading.value;
     }
     int num_of_entries { static_cast<int>(readings.size() + new_readings.size()) };
     stat.average = sum / num_of_entries;
@@ -193,7 +197,10 @@ void sensor_statistics() {
 
             calculate_statistics(sensor_data::statistics.windspeed, first_windspeed, 
                 sensor_data::readings.windspeed, sensor_data::new_readings.windspeed);
-            // move data into readings
+
+            // move data into readings  - See below
+            // v1.insert(v1.end(), make_move_iterator(v2.begin()), make_move_iterator(v2.end()));
+/* 
             sensor_data::readings.temperature.insert_range(std::move(sensor_data::new_readings.temperature));
             sensor_data::readings.humidity.insert_range(std::move(sensor_data::new_readings.temperature));
             sensor_data::readings.windspeed.insert_range(std::move(sensor_data::new_readings.temperature));
@@ -201,6 +208,7 @@ void sensor_statistics() {
             sensor_data::new_readings.temperature.clear();
             sensor_data::new_readings.humidity.clear();
             sensor_data::new_readings.windspeed.clear();
+ */        
         }
     }
 
@@ -239,18 +247,18 @@ int main()
     // test printing that data is saved
     std::cout << "\nTemperature:\n";
     for (auto& temp : sensor_data::new_readings.temperature) {
-        std::cout << std::chrono::system_clock::to_time_t(temp.first) << "\t";
-        std::cout << temp.second << "\n";
+        std::cout << std::chrono::system_clock::to_time_t(temp.time_point) << "\t";
+        std::cout << temp.value << "\n";
     }
 
     std::cout << "\nHumidity:\t";
     for (auto& hum : sensor_data::new_readings.humidity) {
-        std::cout << hum.second << "\t";
+        std::cout << hum.value << "\t";
     }
 
     std::cout << "\nWind Speed:\t";
     for (auto& ws : sensor_data::new_readings.windspeed) {
-        std::cout << ws.second << "\t";
+        std::cout << ws.value << "\t";
     }
     std::cout << "\n";
 
