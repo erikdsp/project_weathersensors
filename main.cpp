@@ -10,10 +10,6 @@
 #include <algorithm>
 using namespace std::literals::chrono_literals;
 
-// how to get a time stamp
-// std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-// auto t1 = std::chrono::steady_clock::now();
-
 std::mutex sensor_mutex;
 std::atomic_bool system_running { true };  
 
@@ -67,7 +63,7 @@ void sensor_temperature()
     double temperature { temp_distrib(random) };
     
 
-    for (int i = 0 ; i < 10 ; ++i)
+    for (int i = 0 ; i < 50 ; ++i)
     {
         // generate sensor data
         double fluct { tempfluct_distrib(random) };
@@ -80,7 +76,7 @@ void sensor_temperature()
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
             sensor_data::new_readings.temperature.emplace_back(std::chrono::system_clock::now(), temperature);
-            std::cout << temperature << "\n";
+            // std::cout << temperature << "\n";
         }
         std::this_thread::sleep_for(500ms);
     }
@@ -97,7 +93,7 @@ void sensor_humidity()
     static std::uniform_real_distribution<> humfluct_distrib { -0.1, 0.1 };
     double relative_humidity { humidity_distrib(random) };
 
-    for (int i = 0 ; i < 10 ; ++i) {
+    for (int i = 0 ; i < 50 ; ++i) {
         // generate sensor data
         double fluct { humfluct_distrib(random) };
         double new_hum = relative_humidity += fluct;
@@ -109,7 +105,7 @@ void sensor_humidity()
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
             sensor_data::new_readings.humidity.emplace_back(std::chrono::system_clock::now(), relative_humidity);
-            std::cout << "\t" << relative_humidity << "\n";
+            // std::cout << "\t" << relative_humidity << "\n";
         }
         std::this_thread::sleep_for(500ms);
     }
@@ -126,7 +122,7 @@ void sensor_windspeed()
     static std::uniform_real_distribution<> windspeedfluct_distrib { -0.5, 0.5 };
     double windspeed { windspeed_distrib(random) };
     
-    for (int i = 0 ; i < 10 ; ++i)
+    for (int i = 0 ; i < 50 ; ++i)
     {
         // generate sensor data
         double fluct { windspeedfluct_distrib(random) };
@@ -139,7 +135,7 @@ void sensor_windspeed()
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
             sensor_data::new_readings.windspeed.emplace_back(std::chrono::system_clock::now(), windspeed);
-            std::cout << "\t\t" << windspeed << "\n";
+            // std::cout << "\t\t" << windspeed << "\n";
         }
         std::this_thread::sleep_for(500ms);
     }
@@ -194,7 +190,10 @@ void sensor_statistics() {
     static bool first_windspeed { true };
     
     while (system_running) {
-        std::this_thread::sleep_for(5s);
+        // sleep for 5000ms (== 5s)
+        for (int i = 0 ; i < 50 && system_running ; i++){
+            std::this_thread::sleep_for(100ms);
+        }
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
             calculate_statistics(sensor_data::statistics.temperature, first_temperature, 
@@ -209,16 +208,72 @@ void sensor_statistics() {
             move_sensor_data(sensor_data::readings.temperature, sensor_data::new_readings.temperature);
             move_sensor_data(sensor_data::readings.humidity, sensor_data::new_readings.humidity);
             move_sensor_data(sensor_data::readings.windspeed, sensor_data::new_readings.windspeed);
-
-            // sensor_data::readings.humidity.insert_range(std::move(sensor_data::new_readings.temperature));
-            // sensor_data::readings.windspeed.insert_range(std::move(sensor_data::new_readings.temperature));
-            // clear new_readings
-            // sensor_data::new_readings.humidity.clear();
-            // sensor_data::new_readings.windspeed.clear();
         }
     }
-
 }
+
+void print_reading( const std::vector<TimeDouble>& readings, const std::vector<TimeDouble>& new_readings) {
+    if (new_readings.size() > 0) {
+        std::cout << new_readings.back().value << ", "
+                  << new_readings.back().time_point;
+    } else if (readings.size() > 0) {
+        std::cout << readings.back().value << ", "
+                  << readings.back().time_point;
+    } else {
+        std::cout << "<no sensor data>";
+    }
+}
+
+void print_latest_readings(){
+    std::lock_guard<std::mutex> guard(sensor_mutex);
+    // std::cout << "\nLatest Sensor Data";
+    std::cout << "\n"
+              << "Temperature: ";
+    print_reading(sensor_data::readings.temperature, sensor_data::new_readings.temperature);
+    std::cout << "\n"
+              << "Humidity: ";
+    print_reading(sensor_data::readings.humidity, sensor_data::new_readings.humidity);
+    std::cout << "\n"
+          << "Wind Speed: ";
+    print_reading(sensor_data::readings.windspeed, sensor_data::new_readings.windspeed);
+    std::cout << "\n";
+}
+
+void print_single_statistic(Stats stat){
+    std::cout << "Max: " << stat.max.value << ", " << stat.max.time_point << "\n"
+              << "Min: " << stat.min.value << ", " << stat.min.time_point << "\n"
+              << "Average: " << stat.average << "\n";
+}
+
+void print_statistics(){
+    std::lock_guard<std::mutex> guard(sensor_mutex);
+    std::cout << "\nSensor Statistics\n"
+              << std::chrono::system_clock::now() << "\n"
+
+              << "Temperature: \n";
+    print_single_statistic(sensor_data::statistics.temperature);
+
+    std::cout << "Humidity: \n";
+    print_single_statistic(sensor_data::statistics.humidity);
+
+    std::cout << "Wind Speed: \n";
+    print_single_statistic(sensor_data::statistics.windspeed);
+}
+
+void print_sensor_data() {
+    std::cout << "STARTING WEATHER SENSORS - press q to QUIT\n";
+    std::this_thread::sleep_for(100ms);
+    int seconds{1};
+    while (system_running) {
+        if (seconds % 2 == 0) print_latest_readings();
+        if (seconds % 10 == 0) print_statistics();
+        for (int i = 0 ; i < 10 && system_running ; i++){
+            std::this_thread::sleep_for(100ms);
+        }
+        seconds++;
+    }
+}
+
 
 
 
@@ -236,12 +291,12 @@ void quit_prompt(){
 
 int main() 
 {
-    std::cout << "Temp\tHumid\tWind\n";
+    // std::cout << "Temp\tHumid\tWind\n";
     std::thread temperature(sensor_temperature);
     std::thread relative_humidity(sensor_humidity);
     std::thread windspeed(sensor_windspeed);
     std::thread statistics(sensor_statistics);
-
+    std::thread print_data(print_sensor_data);
 
     // std::thread user_prompt(quit_prompt);
     // user_prompt.join();
@@ -251,9 +306,11 @@ int main()
     windspeed.join();
     system_running = false;
     statistics.join();
+    print_data.join();
 
 
     // test printing that data is saved
+/* 
     std::cout << "\nTemperature:\n";
     for (auto& temp : sensor_data::new_readings.temperature) {
         std::cout << std::chrono::system_clock::to_time_t(temp.time_point) << "\t";
@@ -275,6 +332,9 @@ int main()
     }
     std::cout << "\n";
 
-
+    if (sensor_data::readings.temperature.size() > 0) {
+        std::cout << sensor_data::readings.temperature.back().value << "\n";
+    }
+ */
     return 0;
 }
