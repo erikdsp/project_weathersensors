@@ -109,7 +109,7 @@ void sensor_temperature()
     DataGenerator temperature_generator ( -15, 30, -0.2, 0.2 );
     double temperature { temperature_generator.get_initial_value() };
 
-    for (int i = 0 ; i < 50 ; ++i) {
+    while (system_running) {
         temperature = temperature_generator.get_new_value();
         sensor_data::sensor.store_temperature_reading(temperature);
         std::this_thread::sleep_for(500ms);
@@ -122,7 +122,7 @@ void sensor_humidity()
     DataGenerator humidity_generator ( 55.0, 100.0, -0.1, 0.1 );
     double humidity { humidity_generator.get_initial_value() };
 
-    for (int i = 0 ; i < 50 ; ++i) {
+    while (system_running) {
         humidity = humidity_generator.get_new_value();
         sensor_data::sensor.store_humidity_reading(humidity);
         std::this_thread::sleep_for(500ms);
@@ -134,7 +134,7 @@ void sensor_windspeed()
     DataGenerator windspeed_generator ( 0.0, 25.0, -0.5, 0.5 );
     double windspeed { windspeed_generator.get_initial_value() };
 
-    for (int i = 0 ; i < 50 ; ++i) {
+   while (system_running) {
         windspeed = windspeed_generator.get_new_value();
         sensor_data::sensor.store_windspeed_reading(windspeed);
         std::this_thread::sleep_for(500ms);
@@ -316,7 +316,7 @@ void SensorData::print_statistics(){
 void print_sensor_data() {
     {
         std::lock_guard<std::mutex> guard(sensor_mutex);
-        std::cout << "STARTING WEATHER SENSORS - press q to QUIT\n";
+        std::cout << "STARTING SENSOR MONITORING - press q to QUIT\n";
     }    
     std::this_thread::sleep_for(100ms);
     int seconds{1};
@@ -339,10 +339,10 @@ void quit_prompt(){
         if (input.at(0) == 'q') break;
     }    
     system_running = false;
-    {
-        std::lock_guard<std::mutex> guard(sensor_mutex);
-        std::cout << "Quit program\n";
-    }
+    // {
+    //     std::lock_guard<std::mutex> guard(sensor_mutex);
+    //     std::cout << "Quit program\n";
+    // }
 }
 
 int main() 
@@ -353,10 +353,9 @@ int main()
     std::thread windspeed(sensor_windspeed);
     std::thread statistics(sensor_statistics);
     std::thread print_data(print_sensor_data);
+    std::thread user_prompt(quit_prompt);
 
-    // std::thread user_prompt(quit_prompt);
-    // user_prompt.join();
-
+    user_prompt.join();
     temperature.join();
     relative_humidity.join();
     windspeed.join();
@@ -364,6 +363,7 @@ int main()
     statistics.join();
     print_data.join();
 
+    std::cout << "STOPPING SENSOR MONITORING\n";
 
     return 0;
 }
