@@ -71,32 +71,47 @@ namespace sensor_data {
     SensorData sensor;
 }
 
+class DataGenerator {
+private:
+    const double m_min;
+    const double m_max;
+    std::mt19937 m_random;
+    std::uniform_real_distribution<> m_distrib;
+    std::uniform_real_distribution<> m_fluct_distrib;
+    double m_last_value{};
+public:
+    DataGenerator(double min = 0, double max = 100, double fluct_min = -0.1, double fluct_max = 0.1) 
+        : m_min { min }, m_max{ max }, m_random { std::random_device{}() }, 
+          m_distrib { m_min, m_max }, m_fluct_distrib { fluct_min, fluct_max } {}
+    double get_initial_value();
+    double get_new_value();
+};
+
+double DataGenerator::get_initial_value(){
+    m_last_value = m_distrib(m_random);
+    return m_last_value;
+}
+
+double DataGenerator::get_new_value(){
+
+    double fluct { m_fluct_distrib(m_random) };
+    double new_value = m_last_value += fluct;
+    // check that value does not exceed bounds
+    if ( new_value < m_min || new_value > m_max ) {
+        new_value = m_last_value -= fluct;
+    }
+    return new_value;
+}
+
 
 void sensor_temperature()
 {
-    // initialize sensor data
-    const double min_temp { -15.0 };
-    const double max_temp { 30.0 };
-    static std::mt19937 random { std::random_device{}() };
-    static std::uniform_real_distribution<> temp_distrib { min_temp, max_temp };
-    static std::uniform_real_distribution<> tempfluct_distrib { -0.2, 0.2 };
-    double temperature { temp_distrib(random) };
-    
+    DataGenerator temperature_generator ( -15, 30, -0.2, 0.2 );
+    double temperature { temperature_generator.get_initial_value() };
 
-    for (int i = 0 ; i < 50 ; ++i)
-    {
-        // generate sensor data
-        double fluct { tempfluct_distrib(random) };
-        double new_temp = temperature += fluct;
-        // check that temp does not exceed bounds
-        if ( new_temp < min_temp || new_temp > max_temp ) {
-            new_temp = temperature -= fluct;
-        }
-        temperature = new_temp;
-        // store sensor data
-        {
-            sensor_data::sensor.store_temperature_reading(temperature);
-        }
+    for (int i = 0 ; i < 50 ; ++i) {
+        temperature = temperature_generator.get_new_value();
+        sensor_data::sensor.store_temperature_reading(temperature);
         std::this_thread::sleep_for(500ms);
     }
 
@@ -104,57 +119,26 @@ void sensor_temperature()
 
 void sensor_humidity()
 {
-    // initialize sensor data
-    const double min_humidity { 55.0 };
-    const double max_humidity { 100.0 };
-    static std::mt19937 random { std::random_device{}() };
-    static std::uniform_real_distribution<> humidity_distrib { min_humidity, max_humidity };
-    static std::uniform_real_distribution<> humfluct_distrib { -0.1, 0.1 };
-    double relative_humidity { humidity_distrib(random) };
+    DataGenerator humidity_generator ( 55.0, 100.0, -0.1, 0.1 );
+    double humidity { humidity_generator.get_initial_value() };
 
     for (int i = 0 ; i < 50 ; ++i) {
-        // generate sensor data
-        double fluct { humfluct_distrib(random) };
-        double new_hum = relative_humidity += fluct;
-        // check that humidity does not exceed bounds
-        if ( new_hum < min_humidity || new_hum > max_humidity ) {
-            new_hum = relative_humidity -= fluct;
-        }
-        relative_humidity = new_hum;
-        // store sensor data
-        {
-            sensor_data::sensor.store_humidity_reading(relative_humidity);
-        }
+        humidity = humidity_generator.get_new_value();
+        sensor_data::sensor.store_humidity_reading(humidity);
         std::this_thread::sleep_for(500ms);
     }
 }
 
 void sensor_windspeed()
 {
-    // initialize sensor data
-    const double min_windspeed { 0.0 };
-    const double max_windspeed { 25.0 };
-    static std::mt19937 random { std::random_device{}() };
-    static std::uniform_real_distribution<> windspeed_distrib { min_windspeed, max_windspeed };
-    static std::uniform_real_distribution<> windspeedfluct_distrib { -0.5, 0.5 };
-    double windspeed { windspeed_distrib(random) };
-    
-    for (int i = 0 ; i < 50 ; ++i)
-    {
-        // generate sensor data
-        double fluct { windspeedfluct_distrib(random) };
-        double new_windspeed = windspeed += fluct;
-        // check that windspeed does not exceed bounds
-        if ( new_windspeed < min_windspeed || new_windspeed > max_windspeed ) {
-            new_windspeed = windspeed -= fluct;
-        }
-        windspeed = new_windspeed;
-        // store sensor data
-        {
-            sensor_data::sensor.store_windspeed_reading(windspeed);
-        }
+    DataGenerator windspeed_generator ( 0.0, 25.0, -0.5, 0.5 );
+    double windspeed { windspeed_generator.get_initial_value() };
+
+    for (int i = 0 ; i < 50 ; ++i) {
+        windspeed = windspeed_generator.get_new_value();
+        sensor_data::sensor.store_windspeed_reading(windspeed);
         std::this_thread::sleep_for(500ms);
-    }
+    }    
 }
 
 
