@@ -2,7 +2,6 @@
 
 ### Designa ett system som simulerar en väderövervakningsstation med hjälp av C++-trådar och periodic tasks. Systemet ska samla in, bearbeta och visa data från flera "sensorer" (temperatur, luftfuktighet och vindhastighet) i realtid.
 
-
 1. Simulering av sensorer:
 o Använd trådar för att simulera tre sensorer: temperatur, luftfuktighet och
 vindhastighet.
@@ -21,3 +20,17 @@ max) för varje sensor var femte sekund baserat på tidigare mätningar.
 4. Datavisning:
 o Skapa en periodisk uppgift som visar i konsolen de senaste data varannan
 sekund och statistiken var tionde sekund.
+
+Program written by Erik Dahl as part of the Chas Academy Software Developer education.
+
+
+Compile with main.cpp, DataGenerator.cpp, SensorData.cpp, threads.cpp, globals.cpp
+
+Sensors generate an initial values, and then fluctuates within a range, never exceeding min/max.
+The values could be plausible if you squint your eyes.
+
+Statistics are calculated on the m_new_readings vector, and the values are then moved to another vector m_readings
+
+The program will run until you press q (+ Enter)
+
+
