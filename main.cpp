@@ -36,16 +36,39 @@ struct SensorStatistics {
     Stats humidity;
     Stats windspeed;
 };
- 
-/** Global object to store data
- *  Sensor readings are stored in @param new_readings 
- *  Statistics are calculated from new_readings, stored in @param statistics
- *  then new_readings is moved to @param readings 
+
+class SensorData {
+private:
+    SensorReadings m_new_readings;
+    SensorReadings m_readings;
+    SensorStatistics m_statistics;
+
+    void calculate_statistics(Stats& stat, bool& first_reading, 
+                              const std::vector<TimeDouble>& readings, 
+                              const std::vector<TimeDouble>& new_reading);
+    void move_sensor_data(std::vector<TimeDouble>& readings, std::vector<TimeDouble>& new_readings);
+    void print_reading(const std::vector<TimeDouble>& readings, const std::vector<TimeDouble>& new_readings);
+    void print_single_statistic(Stats stat);
+    void store_new_reading(double reading, std::vector<TimeDouble>& readings);
+public:
+    void store_temperature_reading(double reading);
+    void store_humidity_reading(double reading);
+    void store_windspeed_reading(double reading);
+    void calculate_temperature_statistic(bool& first_reading);
+    void calculate_humidity_statistic(bool& first_reading);
+    void calculate_windspeed_statistic(bool& first_reading);
+    void move_temperature_data();
+    void move_humidity_data();
+    void move_windspeed_data();    
+    void print_latest_readings();
+    void print_statistics();
+};
+
+/** 
+ *  Global object to store data
  */
 namespace sensor_data {
-    SensorReadings new_readings;
-    SensorReadings readings;
-    SensorStatistics statistics;
+    SensorData sensor;
 }
 
 
@@ -72,8 +95,7 @@ void sensor_temperature()
         temperature = new_temp;
         // store sensor data
         {
-            std::lock_guard<std::mutex> guard(sensor_mutex);
-            sensor_data::new_readings.temperature.emplace_back(std::chrono::system_clock::now(), temperature);
+            sensor_data::sensor.store_temperature_reading(temperature);
         }
         std::this_thread::sleep_for(500ms);
     }
@@ -101,8 +123,7 @@ void sensor_humidity()
         relative_humidity = new_hum;
         // store sensor data
         {
-            std::lock_guard<std::mutex> guard(sensor_mutex);
-            sensor_data::new_readings.humidity.emplace_back(std::chrono::system_clock::now(), relative_humidity);
+            sensor_data::sensor.store_humidity_reading(relative_humidity);
         }
         std::this_thread::sleep_for(500ms);
     }
@@ -130,12 +151,29 @@ void sensor_windspeed()
         windspeed = new_windspeed;
         // store sensor data
         {
-            std::lock_guard<std::mutex> guard(sensor_mutex);
-            sensor_data::new_readings.windspeed.emplace_back(std::chrono::system_clock::now(), windspeed);
+            sensor_data::sensor.store_windspeed_reading(windspeed);
         }
         std::this_thread::sleep_for(500ms);
     }
 }
+
+
+void SensorData::store_new_reading(double reading, std::vector<TimeDouble>& readings) {
+    std::lock_guard<std::mutex> guard(sensor_mutex);
+    readings.emplace_back(std::chrono::system_clock::now(), reading);
+}
+
+void SensorData::store_temperature_reading(double reading){
+    store_new_reading(reading, m_new_readings.temperature);
+}
+
+void SensorData::store_humidity_reading(double reading){
+    store_new_reading(reading, m_new_readings.humidity);
+}
+void SensorData::store_windspeed_reading(double reading){
+    store_new_reading(reading, m_new_readings.windspeed);
+}
+
 
 /**
  *  Calculates Max, Min and Average
@@ -143,7 +181,8 @@ void sensor_windspeed()
  *  @param sum              Calculate sum of readings and new_readings to get average
  *  @param stat             Stats variable gets updated by the function
  */
-void calculate_statistics(Stats& stat, bool& first_reading,
+void SensorData::calculate_statistics(Stats& stat, bool& first_reading,
+    // Stats& stat, bool& first_reading,
     const std::vector<TimeDouble>& readings,
     const std::vector<TimeDouble>& new_readings) {
 
@@ -175,16 +214,41 @@ void calculate_statistics(Stats& stat, bool& first_reading,
     stat.average = sum / num_of_entries;
 }
 
+
+void SensorData::calculate_temperature_statistic(bool& first_reading){
+    calculate_statistics(m_statistics.temperature, first_reading, m_readings.temperature, m_new_readings.temperature);
+}
+
+void SensorData::calculate_humidity_statistic(bool& first_reading){
+    calculate_statistics(m_statistics.humidity, first_reading, m_readings.humidity, m_new_readings.humidity);
+}
+
+void SensorData::calculate_windspeed_statistic(bool& first_reading){
+    calculate_statistics(m_statistics.windspeed, first_reading, m_readings.windspeed, m_new_readings.windspeed);
+}
+
+
+
 /**
  *  Move from new_readings to readings 
  */
-void move_sensor_data( std::vector<TimeDouble>& readings, std::vector<TimeDouble>& new_readings ) {
+void SensorData::move_sensor_data( std::vector<TimeDouble>& readings, std::vector<TimeDouble>& new_readings ) {
     // move data into readings
     readings.insert(readings.end(), 
                     std::make_move_iterator(new_readings.begin()), 
                     std::make_move_iterator(new_readings.end()) );
     // clear new_readings
     new_readings.clear();
+}
+
+void SensorData::move_temperature_data(){
+    move_sensor_data(m_readings.temperature, m_new_readings.temperature);
+}
+void SensorData::move_humidity_data(){
+    move_sensor_data(m_readings.humidity, m_new_readings.humidity);
+}
+void SensorData::move_windspeed_data(){
+    move_sensor_data(m_readings.windspeed, m_new_readings.windspeed);
 }
 
 
@@ -201,23 +265,19 @@ void sensor_statistics() {
         }
         {
             std::lock_guard<std::mutex> guard(sensor_mutex);
-            calculate_statistics(sensor_data::statistics.temperature, first_temperature, 
-                sensor_data::readings.temperature, sensor_data::new_readings.temperature);
+            sensor_data::sensor.calculate_temperature_statistic(first_temperature);
+            sensor_data::sensor.calculate_humidity_statistic(first_humidity);
+            sensor_data::sensor.calculate_windspeed_statistic(first_windspeed);
 
-            calculate_statistics(sensor_data::statistics.humidity, first_humidity, 
-                sensor_data::readings.humidity, sensor_data::new_readings.humidity);
-
-            calculate_statistics(sensor_data::statistics.windspeed, first_windspeed, 
-                sensor_data::readings.windspeed, sensor_data::new_readings.windspeed);
-
-            move_sensor_data(sensor_data::readings.temperature, sensor_data::new_readings.temperature);
-            move_sensor_data(sensor_data::readings.humidity, sensor_data::new_readings.humidity);
-            move_sensor_data(sensor_data::readings.windspeed, sensor_data::new_readings.windspeed);
+            sensor_data::sensor.move_temperature_data();
+            sensor_data::sensor.move_humidity_data();
+            sensor_data::sensor.move_windspeed_data();
         }
     }
 }
 
-void print_reading( const std::vector<TimeDouble>& readings, const std::vector<TimeDouble>& new_readings) {
+
+void SensorData::print_reading( const std::vector<TimeDouble>& readings, const std::vector<TimeDouble>& new_readings) {
     if (new_readings.size() > 0) {
         std::cout << new_readings.back().value << ", "
                   << new_readings.back().time_point;
@@ -229,49 +289,56 @@ void print_reading( const std::vector<TimeDouble>& readings, const std::vector<T
     }
 }
 
-void print_latest_readings(){
+void SensorData::print_latest_readings(){
     std::lock_guard<std::mutex> guard(sensor_mutex);
     // std::cout << "\nLatest Sensor Data";
     std::cout << "\n"
               << "Temperature: ";
-    print_reading(sensor_data::readings.temperature, sensor_data::new_readings.temperature);
+    print_reading(m_readings.temperature, m_new_readings.temperature);
     std::cout << "\n"
               << "Humidity: ";
-    print_reading(sensor_data::readings.humidity, sensor_data::new_readings.humidity);
+    print_reading(m_readings.humidity, m_new_readings.humidity);
     std::cout << "\n"
           << "Wind Speed: ";
-    print_reading(sensor_data::readings.windspeed, sensor_data::new_readings.windspeed);
+    print_reading(m_readings.windspeed, m_new_readings.windspeed);
     std::cout << "\n";
 }
 
-void print_single_statistic(Stats stat){
+
+
+void SensorData::print_single_statistic(Stats stat){
     std::cout << "Max: " << stat.max.value << ", " << stat.max.time_point << "\n"
               << "Min: " << stat.min.value << ", " << stat.min.time_point << "\n"
               << "Average: " << stat.average << "\n";
 }
 
-void print_statistics(){
+void SensorData::print_statistics(){
     std::lock_guard<std::mutex> guard(sensor_mutex);
     std::cout << "\nSensor Statistics\n"
               << std::chrono::system_clock::now() << "\n"
 
               << "Temperature: \n";
-    print_single_statistic(sensor_data::statistics.temperature);
+    print_single_statistic(m_statistics.temperature);
 
     std::cout << "Humidity: \n";
-    print_single_statistic(sensor_data::statistics.humidity);
+    print_single_statistic(m_statistics.humidity);
 
     std::cout << "Wind Speed: \n";
-    print_single_statistic(sensor_data::statistics.windspeed);
+    print_single_statistic(m_statistics.windspeed);
 }
 
+
+
 void print_sensor_data() {
-    std::cout << "STARTING WEATHER SENSORS - press q to QUIT\n";
+    {
+        std::lock_guard<std::mutex> guard(sensor_mutex);
+        std::cout << "STARTING WEATHER SENSORS - press q to QUIT\n";
+    }    
     std::this_thread::sleep_for(100ms);
     int seconds{1};
     while (system_running) {
-        if (seconds % 2 == 0) print_latest_readings();
-        if (seconds % 10 == 0) print_statistics();
+        if (seconds % 2 == 0) sensor_data::sensor.print_latest_readings();
+        if (seconds % 10 == 0) sensor_data::sensor.print_statistics();
         for (int i = 0 ; i < 10 && system_running ; i++){
             std::this_thread::sleep_for(100ms);
         }
