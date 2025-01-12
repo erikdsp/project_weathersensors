@@ -5,6 +5,9 @@
 #include "threads.h"
 #include <iostream>
 
+/**
+ *  Global variable declared as extern to be available also in this file
+ */
 extern std::atomic_bool system_running;
 
 int main() 

@@ -3,6 +3,15 @@
 #include "structs.h"
 #include "globals.h"
 
+/**
+ *  Class to store and manipulate sensor data
+ *  Specifically: Temperature, Humidity, Wind Speed
+ *  New sensor data is stored in m_new_readings
+ *  calculate_statistics() updates m_statistics with data from m_new_readings
+ *  move_sensor_data() moves data from m_new_readings to m_readings
+ *  std::lock_guard<std::mutex> used where needed
+ */
+
 class SensorData {
 private:
     SensorReadings m_new_readings;

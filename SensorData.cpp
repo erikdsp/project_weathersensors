@@ -101,7 +101,7 @@ void SensorData::move_windspeed_data(){
 
 
 
-
+// https://en.cppreference.com/w/cpp/container/vector/back
 void SensorData::print_reading( const std::vector<TimeDouble>& readings, const std::vector<TimeDouble>& new_readings) {
     if (new_readings.size() > 0) {
         std::cout << new_readings.back().value << ", "

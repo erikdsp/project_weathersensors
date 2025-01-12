@@ -5,6 +5,12 @@
 #include "threads.h"
 #include <random>
 
+/**
+ *  Class to generate fluctuating random numbers in a range
+ *  Initializes a Mersienne Twister random engine (mt19937)
+ *  get_initial_value() generates a number in the range
+ *  get_new_value() generates a number close to the last one that does not exceed m_min and m_max
+ */
 class DataGenerator {
 private:
     const double m_min;

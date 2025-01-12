@@ -1,5 +1,8 @@
 #include "threads.h"
 
+/**
+ *  Global variables declared as extern to be available also in this unit (file)
+ */
 extern std::mutex sensor_mutex;
 extern std::atomic_bool system_running;
 

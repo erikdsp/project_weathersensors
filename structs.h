@@ -1,9 +1,6 @@
 #ifndef WEATHER_SENSORS_STRUCTS_GLOBALS_H
 #define WEATHER_SENSORS_STRUCTS_GLOBALS_H
 
-// #include "SensorData.h"
-// #include "threads.h"
-// #include "DataGenerator.h"
 #include <iostream>
 #include <iomanip>
 #include <thread>
@@ -12,7 +9,6 @@
 #include <random>
 #include <chrono>
 #include <vector>
-#include <map>
 #include <algorithm>
 using namespace std::literals::chrono_literals;
 
@@ -23,6 +19,7 @@ struct TimeDouble {
     double value;
 };
 
+// struct is used in SensorData class
 struct SensorReadings {
     std::vector<TimeDouble> temperature;
     std::vector<TimeDouble> humidity;
@@ -35,6 +32,7 @@ struct Stats {
     double average;
 };
 
+// struct is used in SensorData class
 struct SensorStatistics {
     Stats temperature;
     Stats humidity;
