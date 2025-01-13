@@ -152,3 +152,53 @@ void SensorData::print_statistics(){
     print_single_statistic(m_statistics.windspeed);
 }
 
+std::string SensorData::timepoint_to_string(std::chrono::system_clock::time_point time_point) const {
+    time_t time { std::chrono::system_clock::to_time_t(time_point) };
+    char time_string[100];
+    if (std::strftime(time_string, sizeof(time_string), "%c", std::localtime(&time))){
+        return time_string;
+    }
+    else return "timepoint_to_string Conversion Error";
+}
+
+// Could be more elegant with two helper functions (add_reading, add_statistic) but works for now.
+json SensorData::construct_json_object() const {
+    json json_readings;
+    json json_temporary;
+    json json_stats_temporary;
+    // add readings
+    for (const auto& reading : m_readings.temperature) {
+        json_temporary.push_back( { timepoint_to_string(reading.time_point), reading.value } );
+    }
+    json_readings["Temperature"] = std::move(json_temporary);
+    
+    for (const auto& reading : m_readings.humidity) {
+        json_temporary.push_back( { timepoint_to_string(reading.time_point), reading.value } );
+    }
+    json_readings["Humidity"] = std::move(json_temporary);
+
+    for (const auto& reading : m_readings.windspeed) {
+        json_temporary.push_back( { timepoint_to_string(reading.time_point), reading.value } );
+    }
+    json_readings["Wind Speed"] = std::move(json_temporary);
+
+    // add statistics
+    json_temporary["Max"].push_back({m_statistics.temperature.max.value, timepoint_to_string(m_statistics.temperature.max.time_point)});
+    json_temporary["Min"].push_back({m_statistics.temperature.min.value, timepoint_to_string(m_statistics.temperature.min.time_point)});
+    json_temporary["Average"].push_back({m_statistics.temperature.average});
+    json_stats_temporary["Temperature"] = std::move(json_temporary);
+
+    json_temporary["Max"].push_back({m_statistics.humidity.max.value, timepoint_to_string(m_statistics.humidity.max.time_point)});
+    json_temporary["Min"].push_back({m_statistics.humidity.min.value, timepoint_to_string(m_statistics.humidity.min.time_point)});
+    json_temporary["Average"].push_back({m_statistics.humidity.average});
+    json_stats_temporary["Humidity"] = std::move(json_temporary);
+
+    json_temporary["Max"].push_back({m_statistics.windspeed.max.value, timepoint_to_string(m_statistics.windspeed.max.time_point)});
+    json_temporary["Min"].push_back({m_statistics.windspeed.min.value, timepoint_to_string(m_statistics.windspeed.min.time_point)});
+    json_temporary["Average"].push_back({m_statistics.windspeed.average});
+    json_stats_temporary["Wind Speed"] = std::move(json_temporary);
+
+    json_readings["Statistics"] = std::move(json_stats_temporary);
+
+    return std::move(json_readings);
+}

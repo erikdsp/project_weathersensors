@@ -3,12 +3,17 @@
 #include "globals.h"
 #include "DataGenerator.h"
 #include "threads.h"
+#include "SaveJson.h"
 #include <iostream>
 
 /**
- *  Global variable declared as extern to be available also in this file
+ *  Global variables declared as extern to be available also in this file
  */
 extern std::atomic_bool system_running;
+
+namespace sensor_data {
+    extern SensorData sensor;
+}
 
 int main() 
 {
@@ -28,6 +33,9 @@ int main()
     print_data.join();
 
     std::cout << "STOPPING SENSOR MONITORING\n";
+    std::string filename = save_sensordata_to_json("SensorData", sensor_data::sensor);
+    std::cout << "Data saved to " << filename << "\n";
+
 
     return 0;
 }

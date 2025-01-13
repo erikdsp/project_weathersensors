@@ -2,6 +2,8 @@
 #define WEATHER_SENSORS_SENSORDATA_H
 #include "structs.h"
 #include "globals.h"
+#include "nlohmann/json.hpp"
+using json = nlohmann::ordered_json;
 
 /**
  *  Class to store and manipulate sensor data
@@ -25,6 +27,7 @@ private:
     void print_reading(const std::vector<TimeDouble>& readings, const std::vector<TimeDouble>& new_readings);
     void print_single_statistic(Stats stat);
     void store_new_reading(double reading, std::vector<TimeDouble>& readings);
+    std::string timepoint_to_string(std::chrono::system_clock::time_point time_point) const;
 public:
     void store_temperature_reading(double reading);
     void store_humidity_reading(double reading);
@@ -37,6 +40,7 @@ public:
     void move_windspeed_data();    
     void print_latest_readings();
     void print_statistics();
+    json construct_json_object() const;
 };
 
 
