@@ -23,8 +23,12 @@ sekund och statistiken var tionde sekund.
 
 Program written by Erik Dahl as part of the Chas Academy Software Developer education.
 
+Dependencies:
+/nhlomanm/json.hpp single include header file 
+Nlohmann json parser - details on how to use this:
+https://github.com/nlohmann/json
 
-Compile with main.cpp, DataGenerator.cpp, SensorData.cpp, threads.cpp, globals.cpp
+Compile with main.cpp, DataGenerator.cpp, SensorData.cpp, threads.cpp, globals.cpp, SaveJson.cpp
 
 Sensors generate an initial values, and then fluctuates within a range, never exceeding min/max.
 The values could be plausible if you squint your eyes.
@@ -32,5 +36,5 @@ The values could be plausible if you squint your eyes.
 Statistics are calculated on the m_new_readings vector, and the values are then moved to another vector m_readings
 
 The program will run until you press q (+ Enter)
-
+It will then save the data in a new json file with name SensorData-<Date>(-<index>).json
 

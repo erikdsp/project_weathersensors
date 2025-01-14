@@ -162,6 +162,7 @@ std::string SensorData::timepoint_to_string(std::chrono::system_clock::time_poin
 }
 
 // Could be more elegant with two helper functions (add_reading, add_statistic) but works for now.
+// Note: This is used in main as a single thread, so no mutex/lockguard is utilised.
 json SensorData::construct_json_object() const {
     json json_readings;
     json json_temporary;

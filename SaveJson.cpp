@@ -1,8 +1,6 @@
 #include "SaveJson.h"
 
-namespace sensor_data {
-    extern SensorData sensor;
-}
+
 
 bool file_exists(const std::string& filename) {
     std::ifstream file(filename);
